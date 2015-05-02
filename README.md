@@ -1,6 +1,8 @@
 rush
 ====
 
+[![Build Status](https://travis-ci.org/mfs/rush.svg)](https://travis-ci.org/mfs/rush)
+
 ## Description
 
 I'm completing the chapter 7 (Project: Cracking Shells) exercises from Practical
