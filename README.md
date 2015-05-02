@@ -16,7 +16,7 @@ on the user input.
 
 - [x] Program 7.1 This is just a header file I'm not using.
 - [x] Program 7.2 Version 1 - A simple shell.
-- [ ] Program 7.3 Version 2 - More error checking.
+- [x] Program 7.3 Version 2 - More error checking.
 - [ ] Program 7.4 Redirection - The next three programs implement redirection.
 - [ ] Program 7.5 Redirection.
 - [ ] Program 7.6 Redirection.
