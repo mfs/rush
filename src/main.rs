@@ -19,6 +19,7 @@ fn main() {
     let mut stdin = std::io::stdin();
     let mut stdout = std::io::stdout();
 
+    const CMD_NOT_FOUND: i32 = 127;
     let mut exit_status: i32 = 0;
 
     loop {
@@ -39,6 +40,7 @@ fn main() {
         let mut child = match Command::new(command).args(&args).spawn() {
             Ok(c) => c,
             Err(_) => {
+                exit_status = CMD_NOT_FOUND;
                 println!("rush: command not found");
                 continue;
             }
