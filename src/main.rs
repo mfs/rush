@@ -11,8 +11,22 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use std::process::Command;
+use std::process::{Stdio, Command};
+use std::fs::File;
 use std::io::Write;
+
+fn parsefile(cmd: &mut Vec<&str>, delimiter: &str) -> Option<String> {
+    let idx = cmd.iter().position(|x| *x == delimiter);
+
+    match idx {
+        Some(x) => {
+            let filename = cmd.remove(x + 1);
+            cmd.remove(x);
+            return Some(filename.to_string());
+        },
+        None => return None,
+    }
+}
 
 fn main() {
 
@@ -21,6 +35,9 @@ fn main() {
 
     const CMD_NOT_FOUND: i32 = 127;
     let mut exit_status: i32 = 0;
+
+    const IN_REDIRECT_SYMBOL: &'static str = "<";
+    const OUT_REDIRECT_SYMBOL: &'static str = ">";
 
     loop {
         print!("{} - $ ", exit_status);
@@ -35,9 +52,22 @@ fn main() {
 
         let mut args: Vec<&str> = input.split(char::is_whitespace).filter(|&x| x != "").collect();
 
-        let command = args.remove(0);
+        let in_filename = parsefile(&mut args, IN_REDIRECT_SYMBOL);
+        let out_filename = parsefile(&mut args, OUT_REDIRECT_SYMBOL);
 
-        let mut child = match Command::new(command).args(&args).spawn() {
+        let mut cmd = Command::new(args.remove(0));
+
+        cmd.args(&args);
+
+        if out_filename.is_some() {
+            cmd.stdout(Stdio::piped());
+        }
+
+        if in_filename.is_some() {
+            cmd.stdin(Stdio::piped());
+        }
+
+        let mut child = match cmd.spawn() {
             Ok(c) => c,
             Err(_) => {
                 exit_status = CMD_NOT_FOUND;
@@ -45,6 +75,23 @@ fn main() {
                 continue;
             }
         };
+
+        // I would like to use std::io::Tee here which I'm guessing does a
+        // standard dup2() however it is unstable. I'll look at the nix
+        // crate as an option. Having the parent process buffer data
+        // between the files and processes is not ideal.
+
+        if in_filename.is_some() {
+            let mut f = File::open(in_filename.unwrap()).unwrap();
+            let x: &mut std::process::ChildStdin = child.stdin.as_mut().unwrap();
+            std::io::copy(&mut f, x).unwrap();
+        }
+
+        if out_filename.is_some() {
+            let mut f = File::create(out_filename.unwrap()).unwrap();
+            let x: &mut std::process::ChildStdout = child.stdout.as_mut().unwrap();
+            std::io::copy(x, &mut f).unwrap();
+        }
 
         match child.wait() {
             Ok(s) => { exit_status = s.code().unwrap_or(0); },
