@@ -13,12 +13,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 extern crate libc;
 
-use libc::{fork, execvp};
-use std::fs::File;
 use std::io::Write;
 use std::ffi::CString;
 
 const CMD_NOT_FOUND: i32 = 127;
+const IN_REDIRECT_SYMBOL: &'static str = "<";
+const OUT_REDIRECT_SYMBOL: &'static str = ">";
 
 extern {
     fn wait(stat_loc: *const libc::c_int) -> libc::pid_t;
@@ -37,14 +37,57 @@ fn parsefile(cmd: &mut Vec<&str>, delimiter: &str) -> Option<String> {
     }
 }
 
+fn redirect(in_filename: Option<String>, out_filename: Option<String>) -> bool {
+
+    if in_filename.is_some() {
+        let filename = in_filename.unwrap();
+        unsafe {
+            let fd = libc::open(filename.as_ptr() as *const i8, libc::O_RDONLY, 0o600);
+            if fd < 0 {
+                return false;
+            }
+            if libc::dup2(fd, libc::STDIN_FILENO) == -1 {
+                libc::close(fd);
+                return false;
+            }
+            libc::close(fd);
+        }
+    }
+
+    if out_filename.is_some() {
+        let filename = out_filename.unwrap();
+        unsafe {
+            let fd = libc::open(filename.as_ptr() as *const i8, libc::O_WRONLY | libc::O_CREAT, 0o600);
+            if fd < 0 {
+                return false;
+            }
+            if libc::dup2(fd, libc::STDOUT_FILENO) == -1 {
+                libc::close(fd);
+                return false;
+            }
+            libc::close(fd);
+        }
+    }
+
+    true
+}
+
 fn executecmdline(args: &mut Vec<&str>) -> ! {
+
+    let in_filename = parsefile(args, IN_REDIRECT_SYMBOL);
+    let out_filename = parsefile(args, OUT_REDIRECT_SYMBOL);
+
+    if !redirect(in_filename, out_filename) {
+        println!("Redirection failed.");
+        std::process::exit(1);
+    }
 
     let arg_cstr: Vec<CString> = args.iter().map(|&x| CString::new(x).unwrap()).collect();
 
     let mut arg: Vec<*const i8> = arg_cstr.iter().map(|x| x.as_ptr()).collect();
     arg.push(std::ptr::null());
 
-    unsafe { execvp(arg[0], arg.as_mut_ptr()) };
+    unsafe { libc::execvp(arg[0], arg.as_mut_ptr()) };
 
     std::process::exit(CMD_NOT_FOUND);
 }
@@ -56,8 +99,6 @@ fn main() {
 
     let mut exit_status: i32 = 0;
 
-    const IN_REDIRECT_SYMBOL: &'static str = "<";
-    const OUT_REDIRECT_SYMBOL: &'static str = ">";
 
     loop {
         print!("{} - $ ", exit_status);
@@ -72,10 +113,8 @@ fn main() {
 
         let mut args: Vec<&str> = input.split(char::is_whitespace).filter(|&x| x != "").collect();
 
-        let in_filename = parsefile(&mut args, IN_REDIRECT_SYMBOL);
-        let out_filename = parsefile(&mut args, OUT_REDIRECT_SYMBOL);
 
-        let pid = unsafe { fork() };
+        let pid = unsafe { libc::fork() };
 
         if pid == 0 {
             executecmdline(&mut args);
