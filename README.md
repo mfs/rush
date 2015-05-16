@@ -17,9 +17,9 @@ on the user input.
 - [x] Program 7.1 This is just a header file I'm not using.
 - [x] Program 7.2 Version 1 - A simple shell.
 - [x] Program 7.3 Version 2 - More error checking.
-- [ ] Program 7.4 Redirection - The next three programs implement redirection.
-- [ ] Program 7.5 Redirection.
-- [ ] Program 7.6 Redirection.
+- [x] Program 7.4 Redirection - The next three programs implement redirection.
+- [x] Program 7.5 Redirection.
+- [x] Program 7.6 Redirection.
 - [ ] Program 7.7 Pipelines.
 - [ ] Program 7.8 Pipelines.
 - [ ] Program 7.9 Version 3 - Ignore SIGINT and SIGQUIT.
